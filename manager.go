@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/robfig/cron"
+	"github.com/robfig/cron/v3"
 )
 
 type manager struct {
@@ -38,7 +38,7 @@ func NewManager(c *Config) (Manager, error) {
 	case WithoutRolling:
 		return m, nil
 	case TimeRolling:
-		if err := m.cr.AddFunc(c.RollingTimePattern, func() {
+		if _, err := m.cr.AddFunc(c.RollingTimePattern, func() {
 			m.fire <- m.GenLogFileName(c)
 		}); err != nil {
 			return nil, err
@@ -65,7 +65,7 @@ func NewManager(c *Config) (Manager, error) {
 					if info, err := file.Stat(); err == nil && info.Size() > m.thresholdSize {
 						m.fire <- m.GenLogFileName(c)
 					}
-					file.Close()
+					_ = file.Close()
 				}
 			}
 		}()

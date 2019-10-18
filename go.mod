@@ -1,4 +1,4 @@
-module github.com/arthurkiller/rollingwriter
+module github.com/mfcab/rollingwriter
 
 go 1.12
 

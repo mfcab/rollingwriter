@@ -3,13 +3,13 @@ package rollingwriter
 import (
 	"compress/gzip"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"sync"
 	"sync/atomic"
+	"time"
 	"unsafe"
 )
 
@@ -125,6 +125,14 @@ func NewWriterFromConfig(c *Config) (RollingWriter, error) {
 	default:
 		return nil, ErrInvalidArgument
 	}
+	/*	if c.RollingPolicy==TimeRolling{
+		info,_:=file.Stat()
+		y,m,d:=info.ModTime().Date()
+		var ny,nm,nd=time.Now().Date()
+		if d<nd||m<nm||y<ny{
+			writer.m.<-writer.m.(manager)
+		}
+	}*/
 	return rollingWriter, nil
 }
 
@@ -169,7 +177,7 @@ func (w *Writer) DoRemove() {
 }
 
 // CompressFile compress log file write into .gz and remove source file
-func (w *Writer) CompressFile(oldfile *os.File, cmpname string) error {
+func (w *Writer) CompressFile(cmpname string) error {
 	cmpfile, err := os.OpenFile(cmpname, DefaultFileFlag, DefaultFileMode)
 	defer cmpfile.Close()
 	if err != nil {
@@ -177,17 +185,22 @@ func (w *Writer) CompressFile(oldfile *os.File, cmpname string) error {
 	}
 	gw := gzip.NewWriter(cmpfile)
 	defer gw.Close()
-
-	if _, err = oldfile.Seek(0, 0); err != nil {
+	of, err := os.Open(cmpname + ".tmp")
+	if err != nil {
+		return err
+	}
+	if _, err = of.Seek(0, 0); err != nil {
 		return err
 	}
 
-	if _, err = io.Copy(gw, oldfile); err != nil {
+	if _, err = io.Copy(gw, of); err != nil {
+		_ = cmpfile.Close()
 		if errR := os.Remove(cmpname); errR != nil {
 			return errR
 		}
 		return err
 	}
+	_ = of.Close()
 	return os.Remove(cmpname + ".tmp") // remove *.log.tmp file
 }
 
@@ -201,25 +214,32 @@ func AsynchronousWriterErrorChan(wr RollingWriter) (chan error, error) {
 
 // Reopen do the rotate, open new file and swap FD then trate the old FD
 func (w *Writer) Reopen(file string) error {
-	if err := os.Rename(w.absPath, file); err != nil {
-		return err
+	var rname = file
+	if w.cf.Compress {
+		rname = file + ".tmp"
+	}
+	_ = w.file.Close()
+	if err := os.Rename(w.absPath, rname); err != nil {
+		if err := os.Rename(w.absPath, rname); err != nil {
+			time.Sleep(1 * time.Millisecond)
+			if err := os.Rename(w.absPath, rname); err != nil {
+				w.file, _ = os.Open(w.absPath)
+				return nil
+			}
+		}
 	}
 	newfile, err := os.OpenFile(w.absPath, DefaultFileFlag, DefaultFileMode)
 	if err != nil {
-		return err
+		print("err happend: ", err.Error())
+		return nil
 	}
-	fmt.Println(111)
+	w.file = newfile
 	// swap the unsafe pointer
-	oldfile := atomic.SwapPointer((*unsafe.Pointer)(unsafe.Pointer(&w.file)), unsafe.Pointer(newfile))
+	//oldfile := atomic.SwapPointer((*unsafe.Pointer)(unsafe.Pointer(&w.file)), unsafe.Pointer(newfile))
 
 	go func() {
-		defer (*os.File)(oldfile).Close()
 		if w.cf.Compress {
-			if err := os.Rename(file, file+".tmp"); err != nil {
-				log.Println("error in compress rename tempfile", err)
-				return
-			}
-			if err := w.CompressFile((*os.File)(oldfile), file); err != nil {
+			if err := w.CompressFile(file); err != nil {
 				log.Println("error in compress log file", err)
 				return
 			}

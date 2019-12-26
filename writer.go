@@ -3,6 +3,7 @@ package rollingwriter
 import (
 	"compress/gzip"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -207,7 +208,7 @@ func (w *Writer) Reopen(file string) error {
 	if err != nil {
 		return err
 	}
-
+	fmt.Println(111)
 	// swap the unsafe pointer
 	oldfile := atomic.SwapPointer((*unsafe.Pointer)(unsafe.Pointer(&w.file)), unsafe.Pointer(newfile))
 

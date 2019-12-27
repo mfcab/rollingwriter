@@ -139,3 +139,17 @@ func (m *manager) GenLogFileName(c *Config) (filename string) {
 	m.lock.Unlock()
 	return
 }
+
+func (m *manager) GenOldFileName(c *Config, t time.Time) (filename string) {
+	m.lock.Lock()
+	// [path-to-log]/filename.log.2007010215041517
+	if c.Compress {
+		filename = path.Join(c.LogPath, c.FileName+".log.gz."+t.Format(c.TimeTagFormat))
+	} else {
+		filename = path.Join(c.LogPath, c.FileName+".log."+t.Format(c.TimeTagFormat))
+	}
+	// reset the start time to now
+	m.startAt = time.Now()
+	m.lock.Unlock()
+	return
+}

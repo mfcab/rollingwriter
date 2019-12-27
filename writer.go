@@ -255,7 +255,7 @@ func (w *LockedWriter) Write(b []byte) (n int, err error) {
 	select {
 	case filename := <-w.fire:
 		if err := w.Reopen(filename); err != nil {
-			return 0, err
+			//return 0, err
 		}
 	default:
 	}

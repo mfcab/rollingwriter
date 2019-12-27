@@ -125,14 +125,16 @@ func NewWriterFromConfig(c *Config) (RollingWriter, error) {
 	default:
 		return nil, ErrInvalidArgument
 	}
-	if c.RollingPolicy == TimeRolling {
-		info, _ := file.Stat()
-		y, m, d := info.ModTime().Date()
-		var ny, nm, nd = time.Now().Date()
-		if d < nd || m < nm || y < ny {
-			writer.m.Fire() <- writer.m.(*manager).GenOldFileName(c, info.ModTime())
+	go func() {
+		if c.RollingPolicy == TimeRolling {
+			info, _ := file.Stat()
+			y, m, d := info.ModTime().Date()
+			var ny, nm, nd = time.Now().Date()
+			if d < nd || m < nm || y < ny {
+				writer.m.Fire() <- writer.m.(*manager).GenOldFileName(c, info.ModTime())
+			}
 		}
-	}
+	}()
 	return rollingWriter, nil
 }
 

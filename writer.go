@@ -276,6 +276,8 @@ func (w *LockedWriter) Write(b []byte) (n int, err error) {
 	select {
 	case filename := <-w.fire:
 		if err := w.Reopen(filename); err != nil {
+			//防止日志出错整个程序卡死
+			w.Unlock()
 			return 0, err
 		}
 	default:

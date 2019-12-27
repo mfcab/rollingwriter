@@ -125,14 +125,14 @@ func NewWriterFromConfig(c *Config) (RollingWriter, error) {
 	default:
 		return nil, ErrInvalidArgument
 	}
-	/*	if c.RollingPolicy==TimeRolling{
-		info,_:=file.Stat()
-		y,m,d:=info.ModTime().Date()
-		var ny,nm,nd=time.Now().Date()
-		if d<nd||m<nm||y<ny{
-			writer.m.<-writer.m.(manager)
+	if c.RollingPolicy == TimeRolling {
+		info, _ := file.Stat()
+		y, m, d := info.ModTime().Date()
+		var ny, nm, nd = time.Now().Date()
+		if d < nd || m < nm || y < ny {
+			writer.m.Fire() <- writer.m.(*manager).GenLogFileName(c)
 		}
-	}*/
+	}
 	return rollingWriter, nil
 }
 
@@ -221,7 +221,7 @@ func (w *Writer) Reopen(file string) error {
 	_ = w.file.Close()
 	if err := os.Rename(w.absPath, rname); err != nil {
 		if err := os.Rename(w.absPath, rname); err != nil {
-			time.Sleep(1 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 			if err := os.Rename(w.absPath, rname); err != nil {
 				w.file, _ = os.Open(w.absPath)
 				return nil

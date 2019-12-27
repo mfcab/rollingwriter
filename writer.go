@@ -201,7 +201,7 @@ func AsynchronousWriterErrorChan(wr RollingWriter) (chan error, error) {
 // Reopen do the rotate, open new file and swap FD then trate the old FD
 func (w *Writer) Reopen(file string) error {
 	if err := os.Rename(w.absPath, file); err != nil {
-		return err
+		return nil
 	}
 	newfile, err := os.OpenFile(w.absPath, DefaultFileFlag, DefaultFileMode)
 	if err != nil {

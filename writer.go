@@ -131,7 +131,11 @@ func NewWriterFromConfig(c *Config) (RollingWriter, error) {
 			y, m, d := info.ModTime().Date()
 			var ny, nm, nd = time.Now().Date()
 			if d < nd || m < nm || y < ny {
-				writer.m.Fire() <- writer.m.(*manager).GenOldFileName(c, info.ModTime())
+				path := writer.m.(*manager).GenLogFileName(c)
+				_, err := os.Stat(path)
+				if os.IsNotExist(err) {
+					writer.m.Fire() <- path
+				}
 			}
 		}
 	}()
